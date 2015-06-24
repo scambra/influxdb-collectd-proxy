@@ -215,8 +215,10 @@ func processPacket(packet collectd.Packet) []*influxdb.Series {
 		dataType := packet.DataTypes[i]
 		readyToSend := true
 		normalizedValue := value
+		normalization := false
 
 		if *normalize && dataType == collectd.TypeCounter || *storeRates && dataType == collectd.TypeDerive {
+			normalization = true
 			if before, ok := beforeCache[name]; ok && before.Value != math.NaN() {
 				if before.Value < value {
 					// normalize over time
@@ -257,6 +259,12 @@ func processPacket(packet collectd.Packet) []*influxdb.Series {
 			columns := []string{"time", "value"}
 			points_values := []interface{}{timestamp, normalizedValue}
 			name_value := name
+
+			// save original value too
+			if normalization {
+				columns = append(columns, "original")
+				points_values = append(points_values, value)
+			}
 
 			// option hostname-as-column is true
 			if *hostnameAsColumn {
